@@ -1,12 +1,18 @@
 import  matplotlib
 from IPython.core.pylabtools import figsize
 from docutils.nodes import legend
+from pyspark.ml.connect.classification import LogisticRegression
+
 matplotlib.use('TkAgg')
 import  pandas
 import  numpy
 import pandas as pd
 import  matplotlib.pyplot as plt
 import seaborn as sns
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import  confusion_matrix, classification_report
 
 ## veri setini tanıma ve ön işleme #####
 df = pd.read_csv('data/synthetic_prostate_cancer_risk.csv')
@@ -84,6 +90,36 @@ axes[2].set_title('Boy kilo endeksine göre risk analizi')
 
 plt.tight_layout()
 plt.show()
+
+## Modelleme ##
+le = LabelEncoder()
+df['risk_level_encoded'] = le.fit_transform(df['risk_level'])
+
+
+kategorik_veriler = df.select_dtypes(include = 'object').columns.drop('risk_level')
+
+for col in kategorik_veriler:
+    df[col + '_enc'] =  LabelEncoder().fit_transform(df[col])
+
+ozellik_secimi = [
+    'age', 'bmi', 'sleep_hours', 'smoker_enc', 'alcohol_consumption_enc', 'diet_type_enc', 'physical_activity_level_enc',
+    'family_history_enc', 'mental_stress_level_enc', 'regular_health_checkup_enc', 'prostate_exam_done_enc'
+]
+
+X = df[ozellik_secimi]
+y = df['risk_level_encoded']
+
+## eğitim ve test ##
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
+
+model = LogisticRegression(max_iter=1000,class_weight = 'balanced')
+model.fit(X_train, y_train)
+
+y_pred = model.predict(X_test)
+
+confusion_matrix(y_test, y_pred)
+classification_report(y_test, y_pred)
+
 
 
 
